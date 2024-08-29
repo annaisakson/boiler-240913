@@ -5,7 +5,6 @@ import {
   createUser,
   updateUser,
   deleteUser,
-  // getUserByQuery,
 } from "../handlers/usersHandler";
 
 const router = Router();
@@ -13,8 +12,6 @@ const router = Router();
 router.get("/", getAllUsers);
 
 router.get("/:id", getUserById);
-
-// router.get("/", getUserByQuery);
 
 router.post("/", createUser);
 

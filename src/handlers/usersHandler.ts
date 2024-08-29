@@ -3,9 +3,41 @@ import { pool } from "../index";
 import { createRequest } from "../dtos/CreateUser.dto";
 import userSchema from "../validation/userSchema";
 
-const getAllUsers = async (req: Request, res: Response) => {
+interface SearchQuery {
+  name?: string;
+  email?: string;
+}
+
+interface ResponseUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const getAllUsers = async (
+  req: Request<{}, {}, {}, SearchQuery>,
+  res: Response<ResponseUser>
+) => {
   try {
-    const results = await pool.query('SELECT * FROM "user"');
+    const { email, name } = req.query;
+    let results: ResponseUser;
+    if (name) {
+      results = await pool.query('SELECT * FROM "user" WHERE name LIKE $1', [
+        `${name}%`,
+      ]);
+      console.log(req.query);
+
+      // if (test.rowCount === 0) {
+      //   return res.status(404).send("No users found...");
+      // }
+      // return res.status(200).json(test.rows);
+    } else if (email) {
+      results = await pool.query('SELECT * FROM "user" WHERE email LIKE $1', [
+        `${email}%`,
+      ]);
+    } else {
+      results = await pool.query('SELECT * FROM "user"');
+    }
 
     if (results.rowCount === 0) {
       return res.status(404).send("No users found...");
