@@ -1,18 +1,13 @@
 import { Request, Response } from "express-serve-static-core";
 import { pool } from "../index";
-import { createRequest } from "../dtos/CreateUser.dto";
+import { createRequest } from "../dtos/user/CreateUser.dto";
 import userSchema from "../validation/userSchema";
+import { QueryResult } from "pg";
+//* Varför står det att SearchQuery ska vara i types-mappen och inte i dto?
+import { SearchQuery } from "../dtos/user/GetUserByQuery.dto";
+import { User } from "../types/user/UserInterface";
 
-interface SearchQuery {
-  name?: string;
-  email?: string;
-}
-
-interface ResponseUser {
-  id: number;
-  name: string;
-  email: string;
-}
+type ResponseUser = User[] | string;
 
 const getAllUsers = async (
   req: Request<{}, {}, {}, SearchQuery>,
@@ -20,37 +15,42 @@ const getAllUsers = async (
 ) => {
   try {
     const { email, name } = req.query;
-    let results: ResponseUser;
-    if (name) {
-      results = await pool.query('SELECT * FROM "user" WHERE name LIKE $1', [
-        `${name}%`,
-      ]);
-      console.log(req.query);
 
-      // if (test.rowCount === 0) {
-      //   return res.status(404).send("No users found...");
-      // }
-      // return res.status(200).json(test.rows);
+    let queryText: string;
+    const values: (string | undefined)[] = [];
+
+    //* Hur kan man göra detta smidigare om man har flera sökparametrar???
+    if (name && email) {
+      queryText = 'SELECT * FROM "user" WHERE name LIKE $1 AND email LIKE $2';
+      values.push(`${name}%`, `${email}%`);
+    } else if (name) {
+      queryText = 'SELECT * FROM "user" WHERE name LIKE $1';
+      values.push(`${name}%`);
     } else if (email) {
-      results = await pool.query('SELECT * FROM "user" WHERE email LIKE $1', [
-        `${email}%`,
-      ]);
+      queryText = 'SELECT * FROM "user" WHERE email LIKE $1';
+      values.push(`${email}%`);
     } else {
-      results = await pool.query('SELECT * FROM "user"');
+      queryText = 'SELECT * FROM "user"';
     }
+    // if we need to have a combined search result use: SELECT * FROM "user" WHERE name LIKE $1 AND email LIKE $2
+
+    const results: QueryResult<User> = await pool.query(queryText, values);
 
     if (results.rowCount === 0) {
       return res.status(404).send("No users found...");
     }
 
-    res.status(200).json(results.rows);
+    return res.status(200).json(results.rows);
   } catch (error) {
     console.error(error);
     res.status(500).send("Error fetching data....");
   }
 };
 
-const getUserById = async (req: Request<{ id: number }>, res: Response) => {
+const getUserById = async (
+  req: Request<{ id: number }>,
+  res: Response<ResponseUser>
+) => {
   const { id } = req.params;
   try {
     // const results = await pool.query(`SELECT * FROM "user" WHERE id=${id}`);
@@ -72,7 +72,7 @@ const getUserById = async (req: Request<{ id: number }>, res: Response) => {
 
 const createUser = async (
   req: Request<{}, {}, createRequest>,
-  res: Response
+  res: Response<ResponseUser>
 ) => {
   const { name, email } = req.body;
 
@@ -102,7 +102,7 @@ const createUser = async (
 
 const updateUser = async (
   req: Request<{ id: number }, {}, createRequest>,
-  res: Response
+  res: Response<ResponseUser>
 ) => {
   const { id } = req.params;
   const { name, email } = req.body;
@@ -119,7 +119,10 @@ const updateUser = async (
   }
 };
 
-const deleteUser = async (req: Request<{ id: number }>, res: Response) => {
+const deleteUser = async (
+  req: Request<{ id: number }>,
+  res: Response<ResponseUser>
+) => {
   const { id } = req.params;
   try {
     const results = await pool.query('DELETE from "user" WHERE id=$1', [id]);
