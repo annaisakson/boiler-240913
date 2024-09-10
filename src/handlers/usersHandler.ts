@@ -13,6 +13,7 @@ const getAllUsers = async (
   req: Request<{}, {}, {}, SearchQuery>,
   res: Response<ResponseUser>
 ) => {
+  res.cookie("hello", "world", { maxAge: 60000, signed: true });
   try {
     const { email, name } = req.query;
 
