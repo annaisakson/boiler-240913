@@ -5,6 +5,7 @@ import usersRoute from "./routes/usersRoute";
 import postsRoute from "./routes/postsRoute";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 const app = express();
 
 app.use(helmet());
@@ -45,6 +46,15 @@ export const pool = new Pool({
     rejectUnauthorized: false,
   },
 });
+
+app.use(
+  cors({
+    origin: `http://localhost:${PORT}`,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(cookieParser("alexanderisthebest"));
 app.use("/api/users", usersRoute);
